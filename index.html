@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Quiz Portal</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0c6cc2">
+
+<style>
+
+*{
+box-sizing:border-box;
+}
+
+body{
+margin:0;
+padding:20px;
+font-family:Arial,sans-serif;
+background:#f5f5f5;
+text-align:center;
+}
+
+.top-logo{
+width:110px;
+height:110px;
+border-radius:50%;
+object-fit:cover;
+border:3px solid #ddd;
+margin-top:20px;
+}
+
+h1{
+margin-top:10px;
+}
+
+.info-box{
+background:white;
+padding:15px;
+border-radius:12px;
+margin:15px auto;
+max-width:500px;
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+
+.device-id{
+font-size:14px;
+word-break:break-all;
+color:#0c6cc2;
+font-weight:bold;
+}
+
+button{
+padding:14px 22px;
+border:none;
+border-radius:10px;
+font-size:16px;
+cursor:pointer;
+margin-top:10px;
+}
+
+.download-btn{
+background:#0c6cc2;
+color:white;
+}
+
+.install-btn{
+background:green;
+color:white;
+display:none;
+}
+
+.status{
+margin-top:15px;
+font-weight:bold;
+color:green;
+}
+
+.subjects{
+display:none;
+flex-direction:column;
+gap:15px;
+align-items:center;
+margin-top:25px;
+}
+
+.box{
+width:340px;
+background:white;
+border-radius:14px;
+padding:15px;
+text-decoration:none;
+color:black;
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+
+.box img{
+width:140px;
+border-radius:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<img src=".Logo/logo.png" class="top-logo">
+
+<h1>Quiz Portal</h1>
+
+<h3>Engineered by Moe Thauk</h3>
+
+<div class="info-box">
+
+<h3>Your Device ID</h3>
+
+<div class="device-id" id="device-id">
+Loading...
+</div>
+
+<p>
+Send this Device ID to admin for activation.
+</p>
+
+</div>
+
+<div class="info-box">
+
+<h3>Download Offline Quiz</h3>
+
+<button class="download-btn" id="downloadBtn">
+Download Quiz Files
+</button>
+
+<div class="status" id="status"></div>
+
+<button class="install-btn" id="installBtn">
+Install App
+</button>
+
+</div>
+
+<div class="subjects" id="subjects">
+
+<a href=".Subject/mm_index.html" class="box">
+<img src=".Logo/myan.jpg">
+<p>မြန်မာစာဘာသာရပ်စစ်ဆေးအကဲဖြတ်ခြင်း</p>
+</a>
+
+<a href=".Subject/eng_index.html" class="box">
+<img src=".Logo/eng.jpg">
+<p>အင်္ဂလိပ်စာဘာသာရပ်စစ်ဆေးအကဲဖြတ်ခြင်း</p>
+</a>
+
+<a href=".Subject/math_index.html" class="box">
+<img src=".Logo/math.jpg">
+<p>သင်္ချာဘာသာရပ်စစ်ဆေးအကဲဖြတ်ခြင်း</p>
+</a>
+
+<a href=".Subject/chem_index.html" class="box">
+<img src=".Logo/chem.jpg">
+<p>ဓာတုဗေဓဘာသာရပ်စစ်ဆေးအကဲဖြတ်ခြင်း</p>
+</a>
+
+<a href=".Subject/phy_index.html" class="box">
+<img src=".Logo/phys.jpg">
+<p>ရူပဗေဒဘာသာရပ်စစ်ဆေးအကဲဖြတ်ခြင်း</p>
+</a>
+
+<a href=".Subject/bio_index.html" class="box">
+<img src=".Logo/bio.jpg">
+<p>ဇီဝဗေဓဘာသာရပ်စစ်ဆေးအကဲဖြတ်ခြင်း</p>
+</a>
+
+</div>
+
+<script>
+
+let deferredPrompt;
+
+function generateDeviceId(){
+
+let id = localStorage.getItem("quiz_device_id");
+
+if(!id){
+
+id =
+navigator.userAgent +
+screen.width +
+screen.height +
+new Date().getTimezoneOffset();
+
+id = btoa(id);
+
+localStorage.setItem("quiz_device_id", id);
+
+}
+
+return id;
+
+}
+
+const deviceId = generateDeviceId();
+
+document.getElementById("device-id").textContent = deviceId;
+
+async function checkLicense(){
+
+const response = await fetch("/check_device",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+device_id:deviceId
+})
+});
+
+const data = await response.json();
+
+if(data.allowed){
+
+// ✅ IMPORTANT
+sessionStorage.setItem(
+"entered_from_index",
+"true"
+);
+
+document.getElementById("subjects").style.display =
+"flex";
+
+}else{
+
+alert("Device not activated.");
+
+}
+
+}
+checkLicense();
+
+
+// Register Service Worker
+
+if("serviceWorker" in navigator){
+
+navigator.serviceWorker.register("service-worker.js")
+.then(()=>{
+
+console.log("SW Registered");
+
+});
+
+}
+
+
+// Download Button
+
+document.getElementById("downloadBtn")
+.addEventListener("click", async ()=>{
+
+document.getElementById("status").innerText =
+"Downloading offline files...";
+
+const reg = await navigator.serviceWorker.ready;
+
+if(reg.active){
+
+reg.active.postMessage({
+action:"CACHE_ALL"
+});
+
+}
+
+document.getElementById("status").innerText =
+"Quiz downloaded successfully.";
+
+});
+
+
+
+// Install Button
+
+window.addEventListener("beforeinstallprompt",(e)=>{
+
+e.preventDefault();
+
+deferredPrompt = e;
+
+document.getElementById("installBtn").style.display =
+"inline-block";
+
+});
+
+document.getElementById("installBtn")
+.addEventListener("click", async ()=>{
+
+if(deferredPrompt){
+
+deferredPrompt.prompt();
+
+}
+
+});
+
+</script>
+
+</body>
+</html>
